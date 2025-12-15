@@ -1,0 +1,153 @@
+# config.yaml
+mesa:
+  steps: 960
+  zones:
+    - "Zone_Fire-escape_R"
+    - "Zone_Restroom_7503"
+    - "Zone_Restroom_7406"
+    - "Zone_Restroom_7304"
+    - "Zone_Restroom_7206"
+    - "Zone_Restroom_7112"
+    - "Zone_Restroom_7106"
+    - "Zone_Restroom_7116"
+    - "Zone_Library_7117"
+    - "Zone_ClosedOffice_7118"
+    - "Zone_ClosedOffice_7120"
+    - "Zone_Fire-escape_L"
+    - "Zone_Corridor_Behide-7118-7121"
+    - "Zone_Elec/MechRoom_7122"
+    - "Zone_ClosedOffice_7110"
+    - "Zone_ClosedOffice_7108"
+    - "Zone_Auditorium_7103"
+    - "Zone_Corridor_7101"
+    - "Zone_Auditorium_7102"
+    - "Zone_Auditorium_7104"
+    - "Zone_Storage_7104_Pantry"
+    - "Zone_Corridor_F1"
+    - "Zone_Elevator_L"
+    - "Zone_Classroom_7201"
+    - "Zone_Classroom_7202"
+    - "Zone_Classroom_7203"
+    - "Zone_Classroom_7204"
+    - "Zone_Classroom_7205"
+    - "Zone_Classroom_7210"
+    - "Zone_Office_7211"
+    - "Zone_Office_7212"
+    - "Zone_Corridor_F2"
+    - "Zone_Office_7301"
+    - "Zone_Elevator_R"
+    - "Zone_Office_7316"
+    - "Zone_Classroom_7302"
+    - "Zone_Classroom_7303"
+    - "Zone_Classroom_7315"
+    - "Zone_Classroom_7314"
+    - "Zone_Classroom_7308"
+    - "Zone_Classroom_7309"
+    - "Zone_Classroom_7310"
+    - "Zone_Classroom_7313"
+    - "Zone_Classroom_7312"
+    - "Zone_Elec/MechRoom_7113"
+    - "Zone_Classroom_7311"
+    - "Zone_Corridor_F3"
+    - "Zone_Classroom_7401"
+    - "Zone_Classroom_7402"
+    - "Zone_Classroom_7405"
+    - "Zone_Classroom_7423"
+    - "Zone_Classroom_7422"
+    - "Zone_Classroom_7419"
+    - "Zone_Classroom_7410"
+    - "Zone_Classroom_7411"
+    - "Zone_Elec/MechRoom_7209"
+    - "Zone_Classroom_7412"
+    - "Zone_Classroom_7413"
+    - "Zone_Classroom_7414"
+    - "Zone_Classroom_7418"
+    - "Zone_Classroom_7415"
+    - "Zone_Corridor_F4"
+    - "Zone_Auditorium_7502"
+    - "Zone_Auditorium_7501"
+    - "Zone_Auditorium_7508"
+    - "Zone_Corridor_F5"
+    - "Zone_Elec/MechRoom_7307"
+    - "Zone_Central-hall_F2-3"
+    - "Zone_Elec/MechRoom_7409"
+    - "Zone_Storage_7506"
+  agents_file: "agents.json"
+
+# Scenarios definition
+scenarios:
+  normal_weekday:
+    name: "Normal Semester Weekday"
+    total_agents: 903
+    agent_counts:
+      student_undergrad: 650
+      student_graduate: 80
+      staff: 60
+      support_staff: 143
+      visitor: 30
+  
+  exam_period:
+    name: "Exam Period"
+    total_agents: 665
+    agent_counts:
+      student_undergrad: 520
+      student_graduate: 60
+      staff: 45
+      support_staff: 100
+      visitor: 10
+  
+  conference:
+    name: "Conference/Symposium Event"
+    total_agents: 972
+    agent_counts:
+      student_undergrad: 200
+      student_graduate: 50
+      staff: 80
+      support_staff: 142
+      visitor: 500
+  
+  weekend:
+    name: "Weekend Low Occupancy"
+    total_agents: 189
+    agent_counts:
+      student_undergrad: 120
+      student_graduate: 45
+      staff: 5
+      support_staff: 19
+      visitor: 0
+  
+  summer_break:
+    name: "Summer Break Minimal Operations"
+    total_agents: 141
+    agent_counts:
+      student_undergrad: 50
+      student_graduate: 30
+      staff: 35
+      support_staff: 26
+      visitor: 0
+
+# Policies definition
+policies:
+  minimum_activation:
+    name: "Minimum Room Activation Threshold"
+    type: "occupancy_threshold"
+    min_occupants: 5
+    description: "Only activate HVAC when at least 5 occupants request"
+  
+  setpoint_expansion_1c:
+    name: "Temperature Setpoint Range ±1°C"
+    type: "setpoint_range"
+    tolerance: 1.0
+    description: "Allow ±1°C deviation from preferred temperature"
+  
+  setpoint_expansion_2c:
+    name: "Temperature Setpoint Range ±2°C"
+    type: "setpoint_range"
+    tolerance: 2.0
+    description: "Allow ±2°C deviation from preferred temperature"
+  
+  setpoint_expansion_3c:
+    name: "Temperature Setpoint Range ±3°C"
+    type: "setpoint_range"
+    tolerance: 3.0
+    description: "Allow ±3°C deviation from preferred temperature"

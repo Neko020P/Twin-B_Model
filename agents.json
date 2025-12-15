@@ -1,0 +1,140 @@
+{
+  "agent_types": {
+    "student_undergrad": {
+      "distribution": {
+        "gender_ratio": {"female": 0.6, "male": 0.4},
+        "age_range": [18, 24]
+      },
+      "attributes": {
+        "preferred_temp": {
+          "distribution": "uniform",
+          "min": 24,
+          "max": 26
+        },
+        "comfort_tolerance": {
+          "distribution": "uniform",
+          "min": 1.5,
+          "max": 2.5
+        },
+        "heat_gain_watts": {
+          "distribution": "normal",
+          "mean": 90,
+          "std": 10
+        }
+      },
+      "behaviors": {
+        "device_usage_pattern": "intermittent"
+      },
+      "schedule_template": "undergraduate_classes"
+    },
+    "student_graduate": {
+      "distribution": {
+        "gender_ratio": {"female": 0.5, "male": 0.5},
+        "age_range": [23, 35]
+      },
+      "attributes": {
+        "preferred_temp": {
+          "distribution": "uniform",
+          "min": 24,
+          "max": 26
+        },
+        "comfort_tolerance": {
+          "distribution": "uniform",
+          "min": 1.5,
+          "max": 2.5
+        },
+        "heat_gain_watts": {
+          "distribution": "normal",
+          "mean": 85,
+          "std": 10
+        }
+      },
+      "behaviors": {
+        "device_usage_pattern": "research"
+      },
+      "schedule_template": "graduate_research"
+    },
+    "staff": {
+      "distribution": {
+        "gender_ratio": {"female": 0.5, "male": 0.5},
+        "age_range": [30, 65]
+      },
+      "attributes": {
+        "preferred_temp": {
+          "distribution": "uniform",
+          "min": 25,
+          "max": 27
+        },
+        "comfort_tolerance": {
+          "distribution": "uniform",
+          "min": 1,
+          "max": 2
+        },
+        "heat_gain_watts": {
+          "distribution": "normal",
+          "mean": 100,
+          "std": 10
+        }
+      },
+      "behaviors": {
+        "device_usage_pattern": "work_hours"
+      },
+      "schedule_template": "office_hours"
+    },
+    "support_staff": {
+      "distribution": {
+        "gender_ratio": {"female": 0.4, "male": 0.6},
+        "age_range": [20, 55]
+      },
+      "attributes": {
+        "preferred_temp": {
+          "distribution": "uniform",
+          "min": 26,
+          "max": 28
+        },
+        "comfort_tolerance": {
+          "distribution": "uniform",
+          "min": 2.5,
+          "max": 3.5
+        },
+        "heat_gain_watts": {
+          "distribution": "normal",
+          "mean": 150,
+          "std": 20
+        }
+      },
+      "behaviors": {
+        "movement_pattern": "cyclic_route",
+        "device_usage_pattern": "low"
+      },
+      "schedule_template": "support_shifts"
+    },
+    "visitor": {
+      "distribution": {
+        "gender_ratio": {"female": 0.5, "male": 0.5},
+        "age_range": [18, 65]
+      },
+      "attributes": {
+        "preferred_temp": {
+          "distribution": "uniform",
+          "min": 24,
+          "max": 26
+        },
+        "comfort_tolerance": {
+          "distribution": "uniform",
+          "min": 1,
+          "max": 1.5
+        },
+        "heat_gain_watts": {
+          "distribution": "normal",
+          "mean": 85,
+          "std": 10
+        }
+      },
+      "behaviors": {
+        "device_usage_pattern": "short_stay"
+      },
+      "schedule_template": "visitor_pattern"
+    }
+  }
+}
