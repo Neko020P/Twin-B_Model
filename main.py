@@ -64,7 +64,6 @@ def run_single_simulation(config, scenario, policy, rank, world_size, device, ba
     
     callback_queue = queue.Queue()
     
-    # FIX #2: Pre-allocate GPU tensors for zone temps (enables H2D transfer + GPU work)
     zone_temps_gpu = torch.zeros(len(zone_keys), dtype=torch.float32, device=device)
     pinned_zone_temps = torch.zeros(len(zone_keys), dtype=torch.float32, pin_memory=(device.type == 'cuda'))
     
@@ -119,8 +118,6 @@ def run_single_simulation(config, scenario, policy, rank, world_size, device, ba
                 ep_model.step_agents(ep_model=ep_model)
             
             zone_temps_list = [zone_temps.get(z) for z in zone_keys]
-            # FIX #2: Use pre-allocated GPU tensor + pinned memory for async H2D transfer
-            # Convert zone_temps to numpy, then copy asynchronously to GPU
             zone_temps_np = torch.tensor(
                 [t if t is not None else float('inf') for t in zone_temps_list],
                 dtype=torch.float32
@@ -134,34 +131,25 @@ def run_single_simulation(config, scenario, policy, rank, world_size, device, ba
         if world_size > 1:
             dist.broadcast(zone_temps_gpu, src=0)
         
-        # Compute setpoint requests from agents
         if rank == 0 and ep_model:
             local_requests = ep_model.compute_setpoint_requests()
         else:
             local_requests = {k: float('inf') for k in zone_keys}
             
-        # FIX #1: Use all_reduce(MIN) instead of all_gather+min
-        # all_reduce is faster (single operation vs gather+stack+reduce)
-        # More importantly: enables async execution (reduces sync overhead)
+
         local_setpoint_tensor = dict_to_tensor(local_requests, zone_keys, device)
         global_setpoint_tensor = local_setpoint_tensor.clone()
         if world_size > 1:
-            # all_reduce with MIN reduction (replaces all_gather pattern)
+ 
             dist.all_reduce(global_setpoint_tensor, op=dist.ReduceOp.MIN)
-            # NOTE: This is non-blocking on newer PyTorch versions with certain backends
-            # To enable true async: don't add barrier here
+
     
         if rank == 0 and ep_model:
             merged_dict = tensor_to_dict(global_setpoint_tensor, zone_keys)
             ep_model.apply_setpoints_to_ep(merged_dict)
     
         
-        # FIX #1: Remove unnecessary barrier after every step
-        # Barriers cause GPU-CPU sync: GPU idles while waiting for all ranks
-        # Only use barrier at critical sync points (init, final results collection)
-        # Moved barrier to outside main loop or made it optional
-        # if world_size > 1:
-        #     dist.barrier()  # ← REMOVED: causes 96+ syncs per simulation step!
+
 
     if rank == 0 and ep_thread:
         ep_thread.join()
@@ -193,7 +181,7 @@ def run_all_simulations():
     all_agent_results = []
     all_zone_results = []
     
-    # Create main output directory
+
     output_dir = config.get("simulation", {}).get("output_dir", "simulation_results")
     if rank == 0:
         os.makedirs(output_dir, exist_ok=True)
@@ -206,7 +194,7 @@ def run_all_simulations():
                 config, scenario, policy, rank, world_size, device, backend, local_rank
             )
             
-            # Save individual files for each combination
+
             if rank == 0 and agent_res and zone_res:
                 combo_name = f"{scenario}_{policy}"
                 
@@ -218,11 +206,11 @@ def run_all_simulations():
                 df_zones.to_csv(f"{output_dir}/zones_{combo_name}.csv", index=False)
                 print(f"✅ Saved: zones_{combo_name}.csv ({len(zone_res)} records)", flush=True)
                 
-                # Also collect for combined file
+
                 all_agent_results.extend(agent_res)
                 all_zone_results.extend(zone_res)
     
-    # Save combined results (all scenarios + policies in one file)
+   
     if rank == 0:
         df_all_agents = pd.DataFrame(all_agent_results)
         df_all_agents.to_csv(f"{output_dir}/ALL_agents_combined.csv", index=False)
@@ -232,7 +220,7 @@ def run_all_simulations():
         df_all_zones.to_csv(f"{output_dir}/ALL_zones_combined.csv", index=False)
         print(f"✅ Saved combined: ALL_zones_combined.csv ({len(all_zone_results)} total records)")
         
-        # Save summary statistics
+
         summary = df_all_zones.groupby(['scenario', 'policy']).agg({
             'zone_temp': ['mean', 'std', 'min', 'max'],
             'ac_opened': ['mean', 'sum'],

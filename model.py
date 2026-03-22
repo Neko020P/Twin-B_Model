@@ -19,14 +19,6 @@ from eppy.modeleditor import IDF
 
 
 class BuildingModel(Model):
-    """
-    Performance-optimized building model with:
-    - O(N) spatial indexing instead of O(N²)
-    - Schedule caching (22x faster)
-    - Vectorized PyTorch operations
-    - Streaming CSV writes
-    - Batch processing everywhere
-    """
     
     def __init__(self, config, agents_file=None, agents_schedule_file=None, idf_path=None, 
                  ep_control=False, device=None, scenario=None, policy=None):
@@ -39,12 +31,10 @@ class BuildingModel(Model):
         self.zones = config["mesa"].get("zones", [])
         self.last_zone_temps = {z: None for z in self.zones}
         
-        # Scenario and Policy
         self.scenario_name = scenario
         self.policy_name = policy
         self.policy_config = config.get("policies", {}).get(policy, {}) if policy else {}
         
-        # Optimization: Streaming CSV writers instead of in-memory lists
         self.agent_csv = None
         self.zone_csv = None
         self.agent_writer = None
@@ -54,13 +44,12 @@ class BuildingModel(Model):
         self.current_day = None
         self.current_hour = None
         
-        # Optimization: Cache structures
         self._schedule_cache = {}
         self._cached_hour = None
         self._room_index = defaultdict(list)
         self._agent_types = set()
         
-        # Optimization: Pre-allocate tensors for batch operations
+
         self._batch_temps = None
         self._batch_prefs = None
         self._batch_tolerances = None
@@ -95,7 +84,7 @@ class BuildingModel(Model):
         
         combo = f"{self.scenario_name}_{self.policy_name}"
         
-        # Agent CSV
+
         agent_file = f"{output_dir}/agents_{combo}.csv"
         self.agent_csv = open(agent_file, "w", newline='', buffering=8192)
         agent_fields = ["scenario", "policy", "day", "hour", "step", "agent_id", 
@@ -103,8 +92,8 @@ class BuildingModel(Model):
                        "using_ac", "preferred_temp", "heat_gain_watts"]
         self.agent_writer = csv.DictWriter(self.agent_csv, fieldnames=agent_fields)
         self.agent_writer.writeheader()
-        
-        # Zone CSV
+
+
         zone_file = f"{output_dir}/zones_{combo}.csv"
         self.zone_csv = open(zone_file, "w", newline='', buffering=8192)
         zone_fields = ["scenario", "policy", "day", "hour", "step", "zone", 
@@ -186,7 +175,7 @@ class BuildingModel(Model):
 
         total_created = 0
         for agent_type, count in agent_counts.items():
-            self._agent_types.add(agent_type)  # Track unique types
+            self._agent_types.add(agent_type)  
             info = self.agent_config.get("agent_types", {}).get(agent_type, {})
             
             for i in range(count):
@@ -236,7 +225,7 @@ class BuildingModel(Model):
         Speedup: 22x
         """
         if hour == self._cached_hour:
-            return  # Already cached
+            return  
         
         self._schedule_cache.clear()
         for agent_type in self._agent_types:
@@ -299,7 +288,7 @@ class BuildingModel(Model):
         if not agents_list:
             return
         
-        # Build tensors
+
         temps = []
         prefs = []
         tols = []
@@ -315,17 +304,17 @@ class BuildingModel(Model):
                 prefs.append(agent.preferred_temp)
                 tols.append(getattr(agent, "comfort_tolerance", 1.0))
         
-        # Vectorized operations
+
         temps_tensor = torch.tensor(temps, dtype=torch.float32, device=self.device)
         prefs_tensor = torch.tensor(prefs, dtype=torch.float32, device=self.device)
         tols_tensor = torch.tensor(tols, dtype=torch.float32, device=self.device)
         
-        # Batch calculations
+ 
         diffs = torch.abs(temps_tensor - prefs_tensor)
         comfort_levels = torch.clamp(prefs_tensor - diffs, min=0.0)
         using_ac_tensor = diffs > tols_tensor
         
-        # Assign back
+
         for i, agent in enumerate(agents_list):
             if not torch.isnan(temps_tensor[i]):
                 agent.comfort_level = comfort_levels[i].item()
@@ -348,14 +337,14 @@ class BuildingModel(Model):
         per_zone = {}
         zone_occupants = {}
         
-        # Use spatial index
+
         for zone, agents in self._room_index.items():
             ac_agents = [a for a in agents if getattr(a, "using_ac", False)]
             if ac_agents:
                 per_zone[zone] = [a.preferred_temp for a in ac_agents]
                 zone_occupants[zone] = len(agents)
         
-        # Apply policy
+
         if self.policy_config.get("type") == "occupancy_threshold":
             min_occupants = self.policy_config.get("min_occupants", 5)
             for zone, temps in per_zone.items():
@@ -411,7 +400,7 @@ class BuildingModel(Model):
             if t is not None:
                 self.last_zone_temps[z] = float(t)
 
-        # Vectorized initialization
+
         active_agents = [a for a in self.schedule.agents]
         self._batch_compute_comfort_vectorized(active_agents, self.last_zone_temps)
 
@@ -425,13 +414,12 @@ class BuildingModel(Model):
         - Vectorized calculations (23x faster)
         - Streaming writes (no memory buildup)
         """
-        #hour = (self.current_step * 0.25) % 24 #step#
-        hour = float(self.current_step % 24)
-        self.current_hour = float(hour)
-        #self.current_day = self.current_step // 96  #step#
+        hour = (self.current_step * 0.25) % 24 #step#
+        #hour = float(self.current_step % 24)
+        #self.current_hour = float(hour)
+        self.current_day = self.current_step // 96  #step#
         self.current_day = self.current_step // 24
         
-        # Update schedule cache for this hour
         self._update_schedule_cache(hour)
         
         if ep_model is not None:
@@ -439,11 +427,10 @@ class BuildingModel(Model):
             for z, t in zone_temps.items():
                 if t is not None:
                     self.last_zone_temps[z] = t
-   
-        # Phase 1: Update occupancy and activity using cached schedules
+
         zone_heat = {zone: 0.0 for zone in self.zones}
         for agent in self.schedule.agents:
-            # Use cached schedule value
+
             prob_in_room = self._schedule_cache.get(agent.agent_type, {}).get("occupancy", 0.0)
             prob_in_room = max(0.0, min(float(prob_in_room), 1.0))
             agent.in_room = random.random() < prob_in_room
@@ -456,15 +443,15 @@ class BuildingModel(Model):
                 agent.current_hour = hour
                 continue
 
-            # Calculate heat gain with cached activity factor
+
             if agent.current_room in self.zones:
                 activity_factor = self._schedule_cache.get(agent.agent_type, {}).get("activity", 100.0)
                 zone_heat[agent.current_room] += agent.heat_gain_watts * activity_factor / 120
 
-        # Build spatial index O(N)
+
         self._build_spatial_index()
         
-        # Phase 2: Update people count in EnergyPlus
+
         if ep_model is not None:
             zone_people_count = {zone: len(agents) for zone, agents in self._room_index.items()}
             for zone, count in zone_people_count.items():
@@ -475,11 +462,11 @@ class BuildingModel(Model):
                     except Exception as e:
                         print(f"[WARN] Cannot set people count zone {zone}: {e}")
 
-        # Phase 3: Vectorized comfort calculation
+
         active_agents = [a for a in self.schedule.agents if getattr(a, "in_room", True)]
         self._batch_compute_comfort_vectorized(active_agents, self.last_zone_temps)
         
-        # Phase 4: Voting mechanism using spatial index (O(1) per agent)
+
         for zone, agents_in_zone in self._room_index.items():
             if len(agents_in_zone) <= 1:
                 continue
@@ -488,16 +475,15 @@ class BuildingModel(Model):
             if temp is None:
                 continue
             
-            # Count AC votes in this zone
+
             ac_votes = sum(1 for a in agents_in_zone 
                           if abs(float(temp) - a.preferred_temp) > a.comfort_tolerance)
-            
-            # Apply democratic decision
+
             use_ac = ac_votes > len(agents_in_zone) / 2
             for agent in agents_in_zone:
                 agent.using_ac = use_ac
         
-        # Phase 5: Write to CSV immediately (streaming)
+
         agent_batch = []
         for agent in self.schedule.agents:
             if not getattr(agent, "in_room", True):
@@ -523,26 +509,26 @@ class BuildingModel(Model):
             }
             agent_batch.append(record)
         
-        # Batch write agents
+
         self.agent_writer.writerows(agent_batch)
         
-        # Phase 6: Zone-level results
+
         zone_leads = {}
         zone_setpoints = {}
         
         for zone in self.zones:
             agents_in_zone = self._room_index.get(zone, [])
             
-            # Find leader
+
             leaders = [a.unique_id for a in agents_in_zone
                       if getattr(a, "role", "") == "leader" and a.using_ac]
             zone_leads[zone] = leaders[0] if leaders else None
             
-            # Calculate setpoint
+
             ac_agents = [a for a in agents_in_zone if getattr(a, "using_ac", False)]
             zone_setpoints[zone] = min(a.preferred_temp for a in ac_agents) if ac_agents else None
             
-            # Write zone result
+
             ac_opened = any(a.using_ac for a in agents_in_zone)
             zone_record = {
                 "scenario": self.scenario_name,
@@ -560,10 +546,10 @@ class BuildingModel(Model):
             }
             self.zone_writer.writerow(zone_record)
         
-        # Apply setpoints to EnergyPlus
+
         self.apply_setpoints_to_ep(zone_setpoints)
         
-        # Datacollector
+
         try:
             self.datacollector.collect(self)
         except Exception as e:
@@ -571,7 +557,7 @@ class BuildingModel(Model):
 
         self.current_step += 1
         
-        # Checkpoint every 100 steps
+
         if self.current_step % 100 == 0:
             self._flush_csv_buffers()
 
@@ -586,8 +572,8 @@ class BuildingModel(Model):
         """Close CSV files and return file paths"""
         self._close_csv_writers()
         return {
-            "agent_results": [],  # Empty - data written to CSV
-            "zone_results": []    # Empty - data written to CSV
+            "agent_results": [],  
+            "zone_results": []    
         }
     
     def _close_csv_writers(self):
